@@ -1,11 +1,20 @@
 /* global Phaser */
 
+import { createAnimations } from "./animations.js"
+
 const config = {
   type: Phaser.AUTO,
   width: 256,
   height: 244,
   backgroundColor: '#049cd8',
   parent: 'game',
+  physics: {
+    default: 'arcade',
+    arcade: {
+      gravity: {  y: 300 },
+      debug: false
+    }
+  },
   scene: {
     preload, // se ejecuta para precargar recursos
     create, // se ejecuta cuando el juego comienza
@@ -32,7 +41,7 @@ function preload() {
     { frameWidth: 18, frameHeight: 16 }
   )
 
-  
+  this.load.audio('gameover', 'assets/sound/music/gameover.mp3')
 } 
 
 function create() {
@@ -40,38 +49,43 @@ function create() {
     .setOrigin(0, 0)
     .setScale(0.15)
 
-  this.add.tileSprite(0, config.height - 32, config.width, 32, 'floorbricks' )
-    .setScale(1)
-    .setOrigin(0, 0)
+  // TILES
+  this.floor = this.physics.add.staticGroup()
+
+  this.floor
+    .create(0, config.height - 16, 'floorbricks')
+    .setOrigin(0, 0.5)
+    .refreshBody()
+
+  this.floor
+    .create(150, config.height - 16, 'floorbricks')
+    .setOrigin(0, 0.5)
+    .refreshBody()
+
+  // this.add.tileSprite(100, config.height - 32, config.width, 32, 'floorbricks' )
+  //   .setScale(1)
+  //   .setOrigin(0, 0)
   
-  this.mario = this.add.sprite(50, 210, 'mario')
+  this.mario = this.physics.add.sprite(50, 100, 'mario')
     .setOrigin(0, 1)
+    .setCollideWorldBounds(true)
+    .setGravityY(300)
 
-  this.anims.create({
-    key: 'mario-walk',
-    frames: this.anims.generateFrameNumbers(
-      'mario',
-      { start: 1, end: 3 }
-    ),
-    frameRate: 12,
-    repeat: -1
-  })
+  this.physics.world.setBounds(0, 0, 2000, config.height)
+  this.physics.add.collider(this.mario, this.floor)
 
-  this.anims.create({
-    key: 'mario-idle',
-    frames: [{ key: 'mario', frame: 0 }]
-  })
+  this.cameras.main.setBounds(0, 0, 2000, config.height)
+  this.cameras.main.startFollow(this.mario)
 
-  this.anims.create({
-    key: 'mario-jump',
-    frames: [{ key: 'mario', frame: 5 }]
-  })
+  createAnimations(this)
    
   this.keys = this.input.keyboard.createCursorKeys()
 
 }
 
 function update() {
+  if (this.mario.isDead) return
+
   if (this.keys.left.isDown) {
     this.mario.anims.play('mario-walk', true)
     this.mario.x -= 2
@@ -84,8 +98,23 @@ function update() {
     this.mario.anims.play('mario-idle', true)
   }
 
-  if (this.keys.up.isDown) {
-    this.mario.y -= 2
+  if (this.keys.up.isDown && this.mario.body.touching.down) {
+    this.mario.setVelocityY(-300)
     this.mario.anims.play('mario-jump', true)
+  }
+
+  if (this.mario.y >= config.height) {
+    this.mario.isDead = true
+    this.mario.anims.play('mario-dead')
+    this.mario.setCollideWorldBounds(false)
+    this.sound.add('gameover', { volume: 0.2 }).play()
+
+    setTimeout(() => {
+      this.mario.setVelocityY(-350)
+    }, 100)
+
+    setTimeout(() => {
+      this.scene.restart()
+    }, 2000)
   }
 }
