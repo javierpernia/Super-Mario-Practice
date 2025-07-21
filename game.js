@@ -3,6 +3,7 @@
 import { createAnimations } from "./animations.js"
 
 const config = {
+  autoFocus: false,
   type: Phaser.AUTO,
   width: 256,
   height: 244,
@@ -84,37 +85,48 @@ function create() {
 }
 
 function update() {
-  if (this.mario.isDead) return
+  const { keys, mario } = this
 
-  if (this.keys.left.isDown) {
-    this.mario.anims.play('mario-walk', true)
-    this.mario.x -= 2
-    this.mario.flipX = true
-  } else if (this.keys.right.isDown) {
-    this.mario.anims.play('mario-walk', true)
-    this.mario.x += 2
-    this.mario.flipX = false
-  } else {
-    this.mario.anims.play('mario-idle', true)
+  const isMarioTouchingFloor = mario.body.touching.down
+
+  const isLeftKeyDown = keys.left.isDown
+  const isRightKeyDown = keys.right.isDown
+  const isUpKeyDown = keys.up.isDown
+
+  if (mario.isDead) return
+
+  if (isLeftKeyDown) {
+    isMarioTouchingFloor && mario.anims.play('mario-walk', true)
+    mario.x -= 2
+    // this.mario.setVelocityX(-150)
+    mario.flipX = true
+  } else if (isRightKeyDown) {
+    isMarioTouchingFloor && mario.anims.play('mario-walk', true)
+    mario.x += 2
+    // this.mario.setVelocityX(150)
+    mario.flipX = false
+  } else if (isMarioTouchingFloor) {
+    mario.anims.play('mario-idle', true)
+    // this.mario.setVelocityX(0)
   }
 
-  if (this.keys.up.isDown && this.mario.body.touching.down) {
-    this.mario.setVelocityY(-300)
-    this.mario.anims.play('mario-jump', true)
+  if (isUpKeyDown && isMarioTouchingFloor) {
+    mario.setVelocityY(-300)
+    mario.anims.play('mario-jump', true)
   }
 
-  if (this.mario.y >= config.height) {
-    this.mario.isDead = true
-    this.mario.anims.play('mario-dead')
-    this.mario.setCollideWorldBounds(false)
-    this.sound.add('gameover', { volume: 0.2 }).play()
+  if (mario.y >= config.height) {
+    mario.isDead = true
+    mario.anims.play('mario-dead')
+    mario.setCollideWorldBounds(false)
+    sound.add('gameover', { volume: 0.2 }).play()
 
     setTimeout(() => {
-      this.mario.setVelocityY(-350)
+      mario.setVelocityY(-350)
     }, 100)
 
     setTimeout(() => {
-      this.scene.restart()
+      scene.restart()
     }, 2000)
   }
 }
