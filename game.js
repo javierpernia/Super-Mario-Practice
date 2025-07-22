@@ -1,6 +1,9 @@
 /* global Phaser */
 
 import { createAnimations } from "./animations.js"
+import { initAudio, playAudio } from "./audio.js"
+import { checkControls } from "./controls.js"
+import { initSpritesheet } from "./spritesheets.js"
 
 const config = {
   autoFocus: false,
@@ -36,16 +39,16 @@ function preload() {
     'assets/scenery/overworld/floorbricks.png'
   )
 
-  this.load.spritesheet(
-    'mario',
-    'assets/entities/mario.png',
-    { frameWidth: 18, frameHeight: 16 }
-  )
+  // --- sprites ---
+  initSpritesheet(this)
 
-  this.load.audio('gameover', 'assets/sound/music/gameover.mp3')
+  // --- audio ---
+  initAudio(this)
 } 
 
 function create() {
+  createAnimations(this)
+
   this.add.image(100, 50, 'cloud1')
     .setOrigin(0, 0)
     .setScale(0.15)
@@ -71,62 +74,79 @@ function create() {
     .setOrigin(0, 1)
     .setCollideWorldBounds(true)
     .setGravityY(300)
+    
+  this.enemy = this.physics.add.sprite(120, config.height - 30, 'goomba')
+    .setOrigin(0, 1)
+    .setGravityY(300)
+    .setVelocityX(-50)
+  this.enemy.anims.play('goomba-walk', true)
+    
+  this.coins = this.physics.add.staticGroup()
+  this.coins.create(150, 150, 'coin').anims.play('coin-idle', true)
+  this.coins.create(200, 150, 'coin').anims.play('coin-idle', true)
+  this.physics.add.overlap(this.mario, this.coins, collectCoin, null, this)
 
   this.physics.world.setBounds(0, 0, 2000, config.height)
   this.physics.add.collider(this.mario, this.floor)
+  this.physics.add.collider(this.enemy, this.floor)
+  this.physics.add.collider(this.mario, this.enemy, onHitEnemy, null, this)
 
   this.cameras.main.setBounds(0, 0, 2000, config.height)
   this.cameras.main.startFollow(this.mario)
 
-  createAnimations(this)
+
    
   this.keys = this.input.keyboard.createCursorKeys()
 
 }
 
+function collectCoin (mario, coin) {
+  coin.disableBody(true, true)
+  playAudio('coin-pickup', this, { volume: 0.1 })
+}
+
+function onHitEnemy (mario, enemy) {
+  if (mario.body.touching.down && enemy.body.touching.up) {
+    enemy.anims.play('goomba-dead')
+    mario.setVelocityY(-150)
+    enemy.setVelocityX(0)
+    playAudio('goomba-stomp', this)
+    setTimeout(() => { enemy.destroy() }, 300)
+  } else {
+    killMario(this)
+  }
+}
+
 function update() {
-  const { keys, mario } = this
+  checkControls(this)
 
-  const isMarioTouchingFloor = mario.body.touching.down
+  const { mario } = this
 
-  const isLeftKeyDown = keys.left.isDown
-  const isRightKeyDown = keys.right.isDown
-  const isUpKeyDown = keys.up.isDown
+  // check if mario is dead
+  if (mario.y >= config.height) {
+    killMario(this)
+  }
+}
+
+function killMario (game) {
+  const { mario, scene } = game
 
   if (mario.isDead) return
 
-  if (isLeftKeyDown) {
-    isMarioTouchingFloor && mario.anims.play('mario-walk', true)
-    mario.x -= 2
-    // this.mario.setVelocityX(-150)
-    mario.flipX = true
-  } else if (isRightKeyDown) {
-    isMarioTouchingFloor && mario.anims.play('mario-walk', true)
-    mario.x += 2
-    // this.mario.setVelocityX(150)
-    mario.flipX = false
-  } else if (isMarioTouchingFloor) {
-    mario.anims.play('mario-idle', true)
-    // this.mario.setVelocityX(0)
-  }
+  mario.isDead = true
+  mario.anims.play('mario-dead')
+  mario.setCollideWorldBounds(false)
+  
+  playAudio('gameover', game, { volume: 0.01 })
 
-  if (isUpKeyDown && isMarioTouchingFloor) {
+  mario.body.checkCollision.none = true
+  mario.setVelocityX(0)
+
+  setTimeout(() => {
     mario.setVelocityY(-300)
-    mario.anims.play('mario-jump', true)
-  }
+  }, 100)
 
-  if (mario.y >= config.height) {
-    mario.isDead = true
-    mario.anims.play('mario-dead')
-    mario.setCollideWorldBounds(false)
-    sound.add('gameover', { volume: 0.2 }).play()
-
-    setTimeout(() => {
-      mario.setVelocityY(-350)
-    }, 100)
-
-    setTimeout(() => {
-      scene.restart()
-    }, 2000)
-  }
+  setTimeout(() => {
+    scene.restart()
+  }, 2000)
 }
