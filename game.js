@@ -4,6 +4,7 @@ import { createAnimations } from "./animations.js"
 import { initAudio, playAudio } from "./audio.js"
 import { checkControls } from "./controls.js"
 import { initSpritesheet } from "./spritesheets.js"
+import { initImage } from "./staticimages.js"
 
 const config = {
   autoFocus: false,
@@ -30,20 +31,8 @@ new Phaser.Game(config)
 
 // --- PRELOAD ---
 function preload() {
-  this.load.image(
-    'cloud1',
-    'assets/scenery/overworld/cloud1.png'
-  )
-
-  this.load.image(
-    'floorbricks',
-    'assets/scenery/overworld/floorbricks.png'
-  )
-
-  this.load.image(
-    'supermushroom',
-    'assets/collectibles/super-mushroom.png'
-  )
+  // --- images ---
+  initImage(this)
 
   // --- sprites ---
   initSpritesheet(this)
